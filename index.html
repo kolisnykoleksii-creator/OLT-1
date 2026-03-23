@@ -137,19 +137,34 @@
                     
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Тип локомотива</label>
-                        <select id="locoSelect" onchange="updateSimulation()" class="w-full border-gray-300 rounded-md shadow-sm border p-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="vl10">ВЛ10, ВЛ11, ВЛ10У</option>
-                            <option value="vl8">ВЛ8</option>
-                            <option value="vl80">ВЛ60, ВЛ80 (К, Т, С)</option>
-                            <option value="te10">ТЕ10, 2ТЕ10Л</option>
-                            <option value="other_diesel">Інші тепловози (М62, ТЕ116 та ін.)</option>
+                        <select id="locoSelect" onchange="changeLoco()" class="w-full border-gray-300 rounded-md shadow-sm border p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="vl80">ВЛ80с, ВЛ80т (192 т)</option>
+                            <option value="vl10">ВЛ10, ВЛ11, ВЛ11м5 (184 т)</option>
+                            <option value="vl8">ВЛ8 (184 т)</option>
+                            <option value="de1">ДЕ1 (184 т)</option>
+                            <option value="el5">2ЕЛ5 (192 т)</option>
+                            <option value="chs4">ЧС4 (123 т)</option>
+                            <option value="chs2">ЧС2 (123 т)</option>
+                            <option value="chs7">ЧС7 (164 т)</option>
+                            <option value="ds3">ДС3 (90 т)</option>
+                            <option value="te116">2ТЕ116 (276 т)</option>
+                            <option value="te10m">2ТЕ10М (276 т)</option>
+                            <option value="tep70">ТЕП70 (135 т)</option>
                         </select>
                     </div>
 
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Зчеплювальна маса (т)</label>
-                        <input type="number" id="massInput" value="184" oninput="updateSimulation()" class="w-full border-gray-300 rounded-md shadow-sm border p-2 focus:ring-blue-500 focus:border-blue-500">
-                        <p class="text-xs text-gray-500 mt-1">Приклад: ВЛ80 ≈ 184-192т, ВЛ10 ≈ 184т, ТЕ10 ≈ 138т (одна секція) або 276т (дві)</p>
+                        <input type="number" id="massInput" value="192" oninput="updateSimulation()" class="w-full border-gray-300 rounded-md shadow-sm border p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Маса підставляється автоматично згідно з ПТР, але ви можете змінити її вручну.</p>
+                    </div>
+
+                    <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-900">
+                        <p class="font-bold mb-1">Паспортні дані (тривалий/розрахунковий режим):</p>
+                        <div class="flex justify-between">
+                            <span>Розрахункова швидкість (v<sub>p</sub>): <strong id="vpDisplay">...</strong> км/год</span>
+                            <span>Сила тяги (F<sub>p</sub>): <strong id="fpDisplay">...</strong> кН</span>
+                        </div>
                     </div>
 
                     <!-- Weather Controls -->
@@ -339,11 +354,18 @@
         const MAX_ATTEMPTS = 2;
 
         const formulas = {
-            'vl10': { name: 'ВЛ10, ВЛ11, ВЛ10У', calcPsi: (v) => 0.28 + (3 / (50 + 20 * v)) - 0.0007 * v, type: 'electric', maxSpeed: 60 },
-            'vl8': { name: 'ВЛ8', calcPsi: (v) => 0.25 + (8 / (100 + 20 * v)), type: 'electric', maxSpeed: 60 },
-            'vl80': { name: 'ВЛ60, ВЛ80', calcPsi: (v) => 0.28 + (4 / (50 + 6 * v)) - 0.0006 * v, type: 'electric', maxSpeed: 60 },
-            'te10': { name: 'ТЕ10, 2ТЕ10Л', calcPsi: (v) => 0.118 + (4 / (22 + v)), type: 'diesel', maxSpeed: 50 },
-            'other_diesel': { name: 'Інші тепловози', calcPsi: (v) => 0.118 + (5 / (27.5 + v)), type: 'diesel', maxSpeed: 50 }
+            'vl80': { name: 'ВЛ80с, ВЛ80т', calcPsi: (v) => 0.28 + (4 / (50 + 6 * v)) - 0.0006 * v, type: 'electric', maxSpeed: 110, defaultMass: 192, vp: 51.6, Fp: 428 },
+            'vl10': { name: 'ВЛ10, ВЛ11, ВЛ11м5', calcPsi: (v) => 0.28 + (3 / (50 + 20 * v)) - 0.0007 * v, type: 'electric', maxSpeed: 100, defaultMass: 184, vp: 47.3, Fp: 380 },
+            'vl8': { name: 'ВЛ8', calcPsi: (v) => 0.25 + (8 / (100 + 20 * v)), type: 'electric', maxSpeed: 100, defaultMass: 184, vp: 42.6, Fp: 444 },
+            'de1': { name: 'ДЕ1', calcPsi: (v) => 0.28 + (4 / (50 + 6 * v)) - 0.0006 * v, type: 'electric', maxSpeed: 120, defaultMass: 184, vp: 50.0, Fp: 441 },
+            'el5': { name: '2ЕЛ5', calcPsi: (v) => 0.28 + (4 / (50 + 6 * v)) - 0.0006 * v, type: 'electric', maxSpeed: 120, defaultMass: 192, vp: 51.0, Fp: 441 },
+            'chs4': { name: 'ЧС4', calcPsi: (v) => 0.24 + (6 / (100 + 20 * v)), type: 'electric', maxSpeed: 160, defaultMass: 123, vp: 77.1, Fp: 234 },
+            'chs2': { name: 'ЧС2', calcPsi: (v) => 0.24 + (6 / (100 + 20 * v)), type: 'electric', maxSpeed: 160, defaultMass: 123, vp: 91.5, Fp: 153 },
+            'chs7': { name: 'ЧС7', calcPsi: (v) => 0.24 + (6 / (100 + 20 * v)), type: 'electric', maxSpeed: 160, defaultMass: 164, vp: 87.8, Fp: 308 },
+            'ds3': { name: 'ДС3', calcPsi: (v) => 0.24 + (6 / (100 + 20 * v)), type: 'electric', maxSpeed: 160, defaultMass: 90, vp: 90.0, Fp: 176 },
+            'te116': { name: '2ТЕ116', calcPsi: (v) => 0.118 + (5 / (27.5 + v)), type: 'diesel', maxSpeed: 100, defaultMass: 276, vp: 24.7, Fp: 510 },
+            'te10m': { name: '2ТЕ10М', calcPsi: (v) => 0.118 + (4 / (22 + v)), type: 'diesel', maxSpeed: 100, defaultMass: 276, vp: 24.6, Fp: 510 },
+            'tep70': { name: 'ТЕП70', calcPsi: (v) => 0.118 + (5 / (27.5 + v)), type: 'diesel', maxSpeed: 160, defaultMass: 135, vp: 50.0, Fp: 167 }
         };
 
         // --- TABS ---
@@ -392,6 +414,13 @@
             updateSimulation();
         }
 
+        function changeLoco() {
+            const locoKey = document.getElementById('locoSelect').value;
+            const loco = formulas[locoKey];
+            document.getElementById('massInput').value = loco.defaultMass;
+            updateSimulation();
+        }
+
         function updateSimulation() {
             const locoKey = document.getElementById('locoSelect').value;
             const massInput = document.getElementById('massInput').value;
@@ -402,6 +431,8 @@
             const g = 9.81;
 
             document.getElementById('speedRangeText').innerText = `0 - ${loco.maxSpeed} км/год (крок 5 км/год)`;
+            document.getElementById('vpDisplay').innerText = loco.vp;
+            document.getElementById('fpDisplay').innerText = loco.Fp;
 
             const labels = [];
             const dataFkDry = [];
@@ -409,7 +440,17 @@
             const tableBody = document.getElementById('resultsTableBody');
             tableBody.innerHTML = '';
 
+            // Generate speeds including vp
+            let speeds = [];
             for (let v = 0; v <= loco.maxSpeed; v += 5) {
+                speeds.push(v);
+            }
+            if (!speeds.includes(loco.vp) && loco.vp <= loco.maxSpeed) {
+                speeds.push(loco.vp);
+            }
+            speeds.sort((a, b) => a - b);
+
+            for (let v of speeds) {
                 const psiDry = loco.calcPsi(v);
                 const psiWet = psiDry * 0.7; // Wet modifier
 
@@ -428,7 +469,11 @@
                      displayFk = FkWet;
                 }
 
-                tableBody.innerHTML += `<tr class="bg-white border-b hover:bg-gray-50"><td class="px-4 py-2 font-medium">${v}</td><td class="px-4 py-2">${displayPsi.toFixed(3)}</td><td class="px-4 py-2">${Math.round(displayFk)}</td><td class="px-4 py-2 font-mono text-blue-600">${(displayFk/1000).toFixed(1)}</td></tr>`;
+                let isVp = (v === loco.vp);
+                let rowClass = isVp ? "bg-yellow-50 font-bold border-b hover:bg-yellow-100" : "bg-white border-b hover:bg-gray-50";
+                let vText = isVp ? `${v} (v<sub>p</sub>)` : v;
+
+                tableBody.innerHTML += `<tr class="${rowClass}"><td class="px-4 py-2">${vText}</td><td class="px-4 py-2">${displayPsi.toFixed(3)}</td><td class="px-4 py-2">${Math.round(displayFk)}</td><td class="px-4 py-2 font-mono text-blue-600">${(displayFk/1000).toFixed(1)}</td></tr>`;
             }
             renderChart(labels, dataFkDry, dataFkWet, loco.name);
         }
